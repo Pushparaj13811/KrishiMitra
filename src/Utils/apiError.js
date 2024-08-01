@@ -3,7 +3,7 @@ class ApiError extends Error {
     statuscode,
     message = "Internal Server Error",
     errors = [],
-    stact = ""
+    stack = ""
   ) {
     super(message);
     this.statuscode = statuscode;
