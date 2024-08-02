@@ -6,6 +6,7 @@ import {
   deleteFromCloudinary,
 } from "../Utils/cloudinary.js";
 import { Video } from "../Models/videos.model.js";
+import getVideoDuration from "../Utils/duration.js";
 
 const uploadVideo = asyncHandler(async (req, res) => {
   // Get the title, description, language from the request body
@@ -36,6 +37,8 @@ const uploadVideo = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Video file is missing");
   }
 
+  const videoDuration = await getVideoDuration(localVideoPath);
+
   const videoPath = await uploadOnCloudinary(localVideoPath, "video");
 
   if (!videoPath) {
@@ -47,6 +50,7 @@ const uploadVideo = asyncHandler(async (req, res) => {
     description,
     language,
     url: videoPath,
+    duration: videoDuration,
     uploadedby,
   });
 
