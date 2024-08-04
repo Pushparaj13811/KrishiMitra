@@ -28,6 +28,11 @@ const UserSchema = new Schema(
       trim: true,
       index: true,
     },
+    gender: {
+      type: String,
+      enum: ["male", "female", "other"],
+      required: true,
+    },
     role: {
       type: String,
       enum: ["user", "admin"],
