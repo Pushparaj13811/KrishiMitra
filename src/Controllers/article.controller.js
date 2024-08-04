@@ -170,4 +170,69 @@ const getArticleById = asyncHandler(async (req, res) => {
   }
 });
 
-export { createArticle, getAllArticles, getArticleById };
+const updateArticle = asyncHandler(async (req, res) => {
+  const articleId = req.params?.id;
+  const userId = req.user?._id;
+  if (!articleId) {
+    throw new ApiError(400, "Invalid article ID");
+  }
+  if (!userId) {
+    throw new ApiError(400, "Unauthorized request");
+  }
+  const { title, content, tags, language } = req.body;
+  if (!title || !content || !tags || !language) {
+    throw new ApiError(400, "All fields are required");
+  }
+  try {
+    const article = await Article.findOneAndUpdate(
+      { _id: articleId, authorId: userId },
+      { title, content, tags, language },
+      { new: true }
+    );
+    if (!article) {
+      throw new ApiError(404, "Article not found or unauthorized request");
+    }
+    return res
+      .status(200)
+      .json(new ApiResponse(200, article, "Article updated successfully"));
+  } catch (error) {
+    throw new ApiError(500, "Something went wrong");
+  }
+});
+
+const deleteArticle = asyncHandler(async (req, res) => {
+  const articleId = req.params?.id;
+  const userId = req.user?._id;
+
+  if (!articleId) {
+    throw new ApiError(400, "Invalid article ID");
+  }
+  if (!userId) {
+    throw new ApiError(400, "Unauthorized request");
+  }
+
+  try {
+    const article = await Article.findOneAndDelete({
+      _id: articleId,
+      authorId: userId,
+    });
+
+    if (!article) {
+      throw new ApiError(404, "Article not  found or unauthorized request");
+    }
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, article, "Article deleted successfully"));
+  } catch (error) {
+    throw new ApiError(500, "Something went wrong");
+  }
+});
+
+export {
+  createArticle,
+  getAllArticles,
+  getArticleById,
+  updateArticle,
+  deleteArticle,
+};
