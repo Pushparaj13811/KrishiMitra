@@ -134,7 +134,6 @@ const getAllVideos = asyncHandler(async (req, res) => {
         language: 1,
         url: 1,
         uploader: {
-          _id: 1,
           username: 1,
           avatar: 1,
         },
@@ -186,7 +185,6 @@ const getVideoById = asyncHandler(async (req, res) => {
         url: 1,
         language: 1,
         uploadedby: {
-          _id: { $arrayElemAt: ["$uploadedby._id", 0] },
           username: { $arrayElemAt: [$uploadedby.username, 0] },
           avatar: { $arrayElemAt: [$uploadedby.avatar, 0] },
         },
