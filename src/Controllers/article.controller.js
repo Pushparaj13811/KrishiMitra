@@ -79,9 +79,10 @@ const getAllArticles = asyncHandler(async (req, res) => {
           tags: 1,
           language: 1,
           author: {
-            _id: "$author._id",
             name: "$author.name",
+            username: "$author.username",
             email: "$author.email",
+            avatar: "$author.avatar",
           },
         },
       },
@@ -154,9 +155,10 @@ const getArticleById = asyncHandler(async (req, res) => {
           tags: 1,
           language: 1,
           author: {
-            _id: "$author._id",
             name: "$author.name",
+            username: "$author.username",
             email: "$author.email",
+            avatar: "$author.avatar",
           },
         },
       },
