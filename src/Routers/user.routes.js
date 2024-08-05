@@ -13,7 +13,6 @@ import {
 } from "../Controllers/user.controller.js";
 import { upload } from "../Middlewares/multer.middleware.js";
 import { verifyJwt } from "../Middlewares/auth.middleware.js";
-
 const router = Router();
 
 router.route("/register").post(
