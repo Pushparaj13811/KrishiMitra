@@ -2,9 +2,16 @@ import { ApiError } from "../Utils/apiError.js";
 import { ApiResponse } from "../Utils/apiResponse.js";
 import { asyncHandler } from "../Utils/asyncHandler.js";
 import { Article } from "../Models/articles.model.js";
+import mongoose from "mongoose";
 
 const createArticle = asyncHandler(async (req, res) => {
+  console.log("req.body : ", req.body);
   const { title, content, tags, language } = req.body;
+  console.log("title : ", title);
+  console.log("content : ", content);
+  console.log("tags : ", tags);
+  console.log("language : ", language);
+
   const userId = req.user?._id;
 
   if (!userId) {
@@ -123,7 +130,8 @@ const getArticleById = asyncHandler(async (req, res) => {
   // Check if the result is empty, throw an error if the article is not found
   // Send a success response with the article data
   // Handle and log any errors that occur during the process
-  const articleId = req.params?.id;
+  const articleId = req.params?.articleId;
+  console.log("articleId : ", articleId);
 
   if (!articleId) {
     throw new ApiError(400, "Invalid article ID");
@@ -133,7 +141,7 @@ const getArticleById = asyncHandler(async (req, res) => {
     const article = await Article.aggregate([
       {
         $match: {
-          _id: articleId,
+          _id: new mongoose.Types.ObjectId(articleId),
         },
       },
       {
@@ -145,7 +153,7 @@ const getArticleById = asyncHandler(async (req, res) => {
         },
       },
       {
-        $unwind: { path: "$author", preserveNullAndEmptyArrays: true },
+        $unwind: "$author",
       },
       {
         $project: {
@@ -163,6 +171,7 @@ const getArticleById = asyncHandler(async (req, res) => {
         },
       },
     ]);
+    console.log("article : ", article);
 
     return res
       .status(200)
@@ -173,7 +182,7 @@ const getArticleById = asyncHandler(async (req, res) => {
 });
 
 const updateArticle = asyncHandler(async (req, res) => {
-  const articleId = req.params?.id;
+  const articleId = req.params?.articleId;
   const userId = req.user?._id;
   if (!articleId) {
     throw new ApiError(400, "Invalid article ID");
