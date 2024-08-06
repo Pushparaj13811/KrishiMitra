@@ -6,6 +6,7 @@ import {
   deleteFromCloudinary,
 } from "../Utils/cloudinary.js";
 import { Video } from "../Models/videos.model.js";
+import { CropVideo } from "../Models/cropVideos.model.js";
 import getVideoDuration from "../Utils/duration.js";
 
 const uploadVideo = asyncHandler(async (req, res) => {
@@ -201,4 +202,157 @@ const getVideoById = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, video, "Video retrieved successfully"));
 });
 
-export { uploadVideo, deleteVideo, getAllVideos, getVideoById };
+const uploadVideoToCropVideo = asyncHandler(async (req, res) => {
+  // Get the video id and crop id from the request params and request body
+  // Check if the video id is provided
+  // Check if the crop id is provided
+  // Find the video and crop documents from the database
+  // Check if the video and crop documents exist
+  // Check if the video is already linked to the crop
+  // Create a new crop video document in the database
+  // Send the response
+
+  const videoId = req.params?.id;
+  const { cropId } = req.body;
+
+  if (!videoId) {
+    throw new ApiError(400, "Video id is missing");
+  }
+
+  if (!cropId) {
+    throw new ApiError(400, "Crop id is missing");
+  }
+  const result = await CropVideo.aggregate([
+    {
+      $lookup: {
+        from: "videos",
+        localField: "videoId",
+        foreignField: "_id",
+        as: "video",
+      },
+    },
+    {
+      $unwind: "$video",
+    },
+    {
+      $match: {
+        "video._id": videoId,
+        "video.owner": req.user?._id,
+      },
+    },
+    {
+      $lookup: {
+        from: "crops",
+        localField: "cropId",
+        foreignField: "_id",
+        as: "crop",
+      },
+    },
+    {
+      $unwind: "$crop",
+    },
+    {
+      $match: {
+        "crop._id": cropId,
+        "crop.owner": req.user?._id,
+      },
+    },
+    {
+      $lookup: {
+        from: "cropvideos",
+        let: { videoId: videoId, cropId: cropId },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$videoId", "$$videoId"] },
+                  { $eq: ["$cropId", "$$cropId"] },
+                ],
+              },
+            },
+          },
+        ],
+        as: "existingCropVideo",
+      },
+    },
+    {
+      $unwind: { path: "$existingCropVideo", preserveNullAndEmptyArrays: true },
+    },
+    {
+      $project: {
+        videoExists: {
+          $cond: [{ $gt: [{ $size: "$video" }, 0] }, true, false],
+        },
+        cropExists: { $cond: [{ $gt: [{ $size: "$crop" }, 0] }, true, false] },
+        videoAlreadyLinked: {
+          $cond: [{ $ne: ["$existingCropVideo", null] }, true, false],
+        },
+      },
+    },
+  ]);
+
+  if (result.length === 0) {
+    throw new ApiError(404, "Video or crop not found");
+  }
+
+  const { videoExists, cropExists, videoAlreadyLinked } = result[0];
+
+  if (!videoExists || !cropExists) {
+    throw new ApiError(404, "Unauthorized request or video/crop not found");
+  }
+
+  if (videoAlreadyLinked) {
+    throw new ApiError(400, "Video already uploaded to crop");
+  }
+
+  await CropVideo.create({ cropId, videoId });
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, null, "Video linked to crop successfully"));
+});
+
+const deleteVideoFromCropVideo = asyncHandler(async (req, res) => {
+  // Get the video id from the request params
+  // Get the crop id from the request body
+  // Check if the video id is provided
+  // Check if the crop id is provided
+  // Find the crop video document from the database
+  // Check if the crop video document exists
+  // Delete the crop video document from the database
+  // Send the response
+
+  const videoId = req.params?.id;
+  const { cropId } = req.body;
+
+  if (!videoId) {
+    throw new ApiError(400, "Video id is missing");
+  }
+
+  if (!cropId) {
+    throw new ApiError(400, "Crop id is missing");
+  }
+
+  const result = await CropVideo.findOneAndDelete({
+    videoId,
+    cropId,
+  });
+
+  if (!result) {
+    throw new ApiError(404, "Video not linked to crop");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, null, "Video unlinked from crop successfully"));
+});
+
+export {
+  uploadVideo,
+  deleteVideo,
+  getAllVideos,
+  getVideoById,
+  uploadVideoToCropVideo,
+  deleteVideoFromCropVideo,
+};
