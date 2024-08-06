@@ -7,7 +7,7 @@ const CropEnvironmentSchema = new Schema(
       ref: "Crop",
     },
     environemt: {
-      type: String,
+      type: [String],
       required: true,
     },
   },
