@@ -8,40 +8,31 @@ import {
   deleteFromCloudinary,
 } from "../Utils/cloudinary.js";
 import fs from "fs";
+import { CropEnvironment } from "../Models/cropEnvironments.model.js";
 
 const uploadCropData = asyncHandler(async (req, res) => {
-  // check if the user is authenticated
-  // Verify that req.user?._id exists
-  // Get the crop metadata from the request body
-  // Extract crop metadata fields from req.body (name, scientificName, description, costPerAcre, requiredSoilType, diseasesRisk)
-  // Get the crop images from the request files
-  // Retrieve the images from req.files
-  // check if the crop metadata is provided
-  // Ensure all metadata fields are present and not empty
-  // check if the crop images are provided
-  // Ensure req.files is not empty and contains at least 3 images
-  // check if the crop images are not empty
-  // Ensure that req.files.length is greater than 2
-  // check if the crop images are of type image
-  // Validate each file in req.files to ensure it is an image
-  // check if the metadata is valid and sanitize the input fields
-  // Metadata is validated by checking if fields are neither undefined, null, nor empty
-  // upload the crop metadata
-  // Create a new crop entry in the database using the metadata
-  // get the crop id from the uploaded crop metadata
-  // Retrieve the cropId from the created crop entry
-  // upload the crop images on Cloudinary
-  // Upload images to Cloudinary and collect their URLs
-  // Track if any upload fails
-  // check if the crop images are uploaded successfully
-  // If any upload fails, handle cleanup:
-  //   - Delete uploaded images from Cloudinary
-  //   - Remove the crop metadata from the database
-  //   - Unlink any local files that were uploaded
-  // create a new crop image document in the database
-  // Insert records for successfully uploaded images into the CropImage collection
-  // send the response
-  // Respond with a success message containing crop metadata and image URLs, or handle any errors
+  // Get the user id from the request object
+  // Check if the user id is available, throw an error if no
+  // Extract crop metadata fields from req.body
+  // Check if all required metadata fields are provided, throw an error if any field is missing
+  // Retrieve crop images from the request files
+  // Check if crop images are provided, ensure there are at least 3 images
+  // Validate that all provided files are images, throw an error if any file is not an image
+  // Create a new crop entry and environment in a single transaction
+  // Start a database transaction
+  // Create a new crop document
+  // Get the crop id from the created crop document
+  // Create a new crop environment document
+  // Upload images to Cloudinary
+  // Check if any image uploads failed, throw an error if any upload fails
+  // Insert crop image documents into the database
+  // Commit the transaction if all operations succeed
+  // Send a success response with crop data and image URLs
+  // Handle errors and cleanup if needed
+  // Abort the transaction if any operation fails
+  // Delete uploaded images from Cloudinary if any upload fails
+  // Remove the crop document from the database if necessary
+  // Send an error response with a message
 
   const user = req.user?._id;
 
@@ -56,6 +47,7 @@ const uploadCropData = asyncHandler(async (req, res) => {
     costPerAcre,
     requiredSoilType,
     diseasesRisk,
+    cropEnvironment,
   } = req.body;
 
   if (
@@ -66,7 +58,8 @@ const uploadCropData = asyncHandler(async (req, res) => {
       costPerAcre,
       requiredSoilType,
       diseasesRisk,
-    ].includes(undefined || null || "")
+      cropEnvironment,
+    ].some((field) => !field)
   ) {
     throw new ApiError(400, "Please provide all the required fields");
   }
@@ -74,74 +67,91 @@ const uploadCropData = asyncHandler(async (req, res) => {
   const images = req.files;
 
   if (!images || images.length <= 2) {
-    throw new ApiError(400, "Please provide at least 3 crop image");
+    throw new ApiError(400, "Please provide at least 3 crop images");
   }
 
-  for (let image of images) {
-    if (!image.mimetype.startsWith("image")) {
-      throw new ApiError(400, "All files must be valid images");
-    }
+  if (images.some((image) => !image.mimetype.startsWith("image"))) {
+    throw new ApiError(400, "All files must be valid images");
   }
 
-  const crop = await Crop.create({
-    cropName: name,
-    scientificName,
-    description,
-    costPerAcres: costPerAcre,
-    requiredSoilType,
-    diseasesRisk,
-  });
+  // Create a new crop entry and environment in a single transaction
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-  const cropId = crop._id;
-
-  const localImagePaths = images.map((image) => image.path);
-  const imageUrls = [];
-  let uploadFailed = false;
-
-  for (let localPath of localImagePaths) {
-    try {
-      let url = await uploadOnCloudinary(localPath, "image");
-      if (url) {
-        imageUrls.push(url);
-      } else {
-        uploadFailed = true;
-        fs.unlinkSync(localPath);
-      }
-    } catch (error) {
-      uploadFailed = true;
-      fs.unlinkSync(localPath);
-    }
-  }
-
-  if (uploadFailed) {
-    for (let url of imageUrls) {
-      await deleteFromCloudinary(url);
-    }
-    await Crop.findByIdAndDelete(cropId);
-    throw new ApiError(500, "Failed to upload some crop images");
-  }
-
-  const cropImages = await CropImage.insertMany(
-    imageUrls.map((url) => ({ cropId, image: url }))
-  );
-
-  if (!cropImages) {
-    for (const url of imageUrls) {
-      await deleteFromCloudinary(url);
-    }
-    await Crop.findByIdAndDelete(cropId);
-    throw new ApiError(500, "Failed to save crop images");
-  }
-
-  return res
-    .status(200)
-    .json(
-      new ApiResponse(
-        200,
-        { crop, cropImages },
-        "Crop data and images uploaded successfully"
-      )
+  try {
+    const crop = await Crop.create(
+      [
+        {
+          cropName: name,
+          scientificName,
+          description,
+          costPerAcres: costPerAcre,
+          requiredSoilType,
+          diseasesRisk,
+        },
+      ],
+      { session }
     );
+
+    const cropId = crop[0]._id;
+
+    const cropEnvironmentResponse = await CropEnvironment.create(
+      [
+        {
+          cropId,
+          environment: cropEnvironment,
+        },
+      ],
+      { session }
+    );
+
+    // Upload images to Cloudinary
+    const uploadPromises = images.map((image) =>
+      uploadOnCloudinary(image.path, "image")
+    );
+    const imageUrls = await Promise.all(uploadPromises);
+
+    // Check for upload failures
+    const failedUploads = imageUrls.filter((url) => !url);
+
+    if (failedUploads.length > 0) {
+      throw new Error("Failed to upload some crop images");
+    }
+
+    // Insert crop images
+    await CropImage.insertMany(
+      imageUrls.map((url) => ({ cropId, image: url })),
+      { session }
+    );
+
+    await session.commitTransaction();
+    session.endSession();
+
+    res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          { crop: crop[0], cropEnvironmentResponse, cropImages: imageUrls },
+          "Crop data and images uploaded successfully"
+        )
+      );
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+
+    // Handle cleanup if needed
+    for (const url of imageUrls) {
+      if (url) {
+        await deleteFromCloudinary(url);
+      }
+    }
+    await Crop.findByIdAndDelete(cropId);
+    throw new ApiError(
+      500,
+      error.message || "Failed to upload crop data and images"
+    );
+  }
 });
 
 const deleteCropData = asyncHandler(async (req, res) => {
