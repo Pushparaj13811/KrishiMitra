@@ -41,6 +41,12 @@ router.route("/getuser").get(verifyJwt, (req, res) => {
 
 router.route("/refreshtoken").post(verifyJwt, refreshAccessToken);
 
+router.route("/validateaccesstoken").post(verifyJwt, (req, res) => {
+  res.json(
+    { isValid: true, message: "Access token is valid" }
+  );
+});
+
 router.route("/changepassword").patch(verifyJwt, changeCurrentPassword);
 
 router.route("/updateaccount").patch(verifyJwt, updateAccountDetails);
