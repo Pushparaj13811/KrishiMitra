@@ -8,6 +8,7 @@ import {
 import { User } from "../Models/users.model.js";
 import fs from "fs";
 import jwt from "jsonwebtoken";
+import { UserProfile } from "../Models/userProfile.model.js";
 
 const generateAccessAndRefreshToken = async (userId) => {
   try {
@@ -189,6 +190,61 @@ const logoutUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, null, "User logged out successfully"));
 });
 
+const getUserProfile = asyncHandler(async (req, res) => {
+  const userId = req.user?._id;
+  console.log("userId", userId);
+  const userProfile = await User.aggregate([
+    { $match: { _id: userId } },
+    {
+      $lookup: {
+        from: "userprofiles",
+        localField: "_id",
+        foreignField: "userId",
+        as: "profile",
+      },
+    },
+    { $unwind: "$profile" },
+    {
+      $project: {
+        _id: 1,
+        username: 1,
+        email: 1,
+        fullName: 1,
+        role: 1,
+        language: 1,
+        avatar: 1,
+        coverImage: 1,
+        bio: 1,
+        createdAt: "$profile.createdAt",
+        updatedAt: "$profile.updatedAt",
+        title: "$profile.title",
+        location: "$profile.location",
+        experience: "$profile.experience",
+        farmSize: "$profile.farmSize",
+        primaryCrops: "$profile.primaryCrops",
+        certifications: "$profile.certifications",
+        recentActivities: "$profile.recentActivities",
+        equipment: "$profile.equipment",
+        lastSoilTest: "$profile.lastSoilTest",
+        activeSubscription: "$profile.activeSubscription",
+        soilHealth: "$profile.soilHealth",
+        waterEfficiency: "$profile.waterEfficiency",
+        yieldForecast: "$profile.yieldForecast",
+        sustainability: "$profile.sustainability",
+      },
+    },
+  ]);
+
+  if (!userProfile || userProfile.length === 0) {
+    throw new ApiError(404, "User profile not found");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, "User profile fetched successfully", userProfile[0]));
+
+});
+
 const refreshAccessToken = asyncHandler(async (req, res) => {
   // get refresh token from cookies
   // check for refresh token
@@ -368,17 +424,25 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
 const updateAccountDetails = asyncHandler(async (req, res) => {
   const { fullName, email, username } = req.body;
 
-  if (!fullName || !email || !username) {
+  if (!fullName) {
     throw new ApiError(400, "All fields are required");
+  }
+  let data = {};
+  if (fullName) {
+    data.fullName = fullName;
+  }
+  if (email) {
+    data.email = email;
+  }
+  if (username) {
+    data.username = username;
   }
 
   const user = await User.findByIdAndUpdate(
     req.user?._id,
     {
       $set: {
-        fullName,
-        email,
-        username,
+        ...data,
       },
     },
     {
@@ -389,6 +453,73 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(new ApiResponse(200, user, "Account details updated successfully"));
+});
+const updateUserProfile = asyncHandler(async (req, res) => {
+  const userId = req.user?._id;
+  const updateFields = {};
+
+  const fields = [
+    "title",
+    "location",
+    "experience",
+    "farmSize",
+    "primaryCrops",
+    "certifications",
+    "lastSoilTest",
+    "activeSubscription",
+    "soilHealth",
+    "waterEfficiency",
+    "yieldForecast",
+    "sustainability",
+    "recentActivities",
+    "equipment",
+  ];
+
+
+  fields.forEach((field) => {
+    if (req.body[field] !== undefined) {
+      updateFields[field] = req.body[field];
+    }
+    if ( field === "lastSoilTest") {
+      updateFields["recentActivities"] =
+        [{
+          date: req.body[field],
+          activity: "Soil Test",
+          status: "Completed",
+        }]
+
+    }
+  });
+
+  if (updateFields == null || Object.keys(updateFields).length === 0) {
+    throw new ApiError(400, "No fields to update");
+  }
+
+  try {
+    console.log("updateFields", updateFields);
+    let userProfile = await UserProfile.findOne({ userId });
+
+    if (!userProfile) {
+      userProfile = new UserProfile({ userId, ...updateFields });
+      await userProfile.save();
+    }
+    const updatedProfile = await UserProfile.findOneAndUpdate(
+      { userId },
+      { $set: updateFields },
+      { new: true }
+    );
+
+    if (!updatedProfile) {
+      throw new ApiError(404, "User profile not found");
+    }
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, "User profile updated successfully", updatedProfile));
+
+  } catch (error) {
+    throw new ApiError(500, "Failed to update user profile", error);
+  }
 });
 
 const updateUserBio = asyncHandler(async (req, res) => {
@@ -443,6 +574,8 @@ export {
   registerUser,
   loginUser,
   logoutUser,
+  getUserProfile,
+  updateUserProfile,
   refreshAccessToken,
   changeCurrentPassword,
   updateUserAvatar,
