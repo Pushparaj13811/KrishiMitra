@@ -8,23 +8,18 @@ const CropSchema = new Schema(
     },
     scientificName: {
       type: String,
-      required: true,
     },
     description: {
       type: String,
-      required: true,
     },
     costPerAcres: {
       type: Number,
-      required: true,
     },
     requiredSoilType: {
       type: String,
-      required: true,
     },
     diseasesRisk: {
       type: String,
-      required: true,
     },
     uploadedBy: {
       type: Schema.Types.ObjectId,
