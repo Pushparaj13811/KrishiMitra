@@ -10,6 +10,8 @@ import {
   updateUserCoverImage,
   updateUserLanguage,
   refreshAccessToken,
+  getUserProfile,
+  updateUserProfile,
 } from "../Controllers/user.controller.js";
 import { upload } from "../Middlewares/multer.middleware.js";
 import { verifyJwt } from "../Middlewares/auth.middleware.js";
@@ -39,6 +41,8 @@ router.route("/getuser").get(verifyJwt, (req, res) => {
   res.json(req.user);
 });
 
+router.route("/getuserprofile").get(verifyJwt, getUserProfile);
+router.route("/updateuserprofile").patch(verifyJwt, updateUserProfile);
 router.route("/refreshtoken").post(verifyJwt, refreshAccessToken);
 
 router.route("/validateaccesstoken").post(verifyJwt, (req, res) => {
