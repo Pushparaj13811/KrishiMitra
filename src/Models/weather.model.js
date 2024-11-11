@@ -24,7 +24,6 @@ const WeatherSchema = new Schema(
     },
     rainfall: {
       type: Number,
-      required: true,
     },
     pressure: {
       type: Number,
@@ -36,7 +35,6 @@ const WeatherSchema = new Schema(
     },
     uvIndex: {
       type: Number,
-      required: true,
     },
     visibility: {
       type: Number,
@@ -64,12 +62,60 @@ const WeatherSchema = new Schema(
     cloudCover: {
       type: Number,
     },
+    alerts: {
+      heatStress: {
+        type: Map,
+        of: String,
+        default: {},
+      },
+      frost: {
+        type: Map,
+        of: String,
+        default: {},
+      },
+      highHumidity: {
+        type: Map,
+        of: String,
+        default: {},
+      },
+      lowHumidity: {
+        type: Map,
+        of: String,
+        default: {},
+      },
+      windDamage: {
+        type: Map,
+        of: String,
+        default: {},
+      },
+      drought: {
+        type: Map,
+        of: String,
+        default: {},
+      },
+      flooding: {
+        type: Map,
+        of: String,
+        default: {},
+      },
+      irrigation: {
+        type: Map,
+        of: String,
+        default: {},
+      },
+      excessMoisture: {
+        type: Map,
+        of: String,
+        default: {},
+      },
+    },
   },
   {
     timestamps: true,
   }
 );
 
-WeatherSchema.index({ date: 1 }, { expireAfterSeconds: 345600 });
+// Create index for automatic data expiration
+WeatherSchema.index({ date: 1 }, { expireAfterSeconds: 345600 }); // 4 days (345600 seconds)
 
 export const Weather = mongoose.model("Weather", WeatherSchema);
