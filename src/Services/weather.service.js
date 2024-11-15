@@ -1,11 +1,14 @@
+import Redis from "ioredis";
 import axios from "axios";
 import cron from "node-cron";
-import { ApiResponse } from "../Utils/apiResponse.js";
 import { ApiError } from "../Utils/apiError.js";
-import { asyncHandler } from "../Utils/asyncHandler.js";
 import { Weather } from "../Models/weather.model.js";
 import { UserProfile } from "../Models/userProfile.model.js";
 
+const redisPublisher = new Redis({
+  host: "localhost",
+  port: 6379
+});
 const getCropTypes = async () => {
   try {
     const cropTypes = await UserProfile.find({
@@ -193,8 +196,8 @@ const locations = async () => {
 };
 
 const startWeatherCronJob = () => {
-  console.log("Weather controller :: startWeatherCronJob :: cron job started");
-  cron.schedule("30 23 * * *", async () => {
+  console.log("Weather controller :: startWeatherCronJob :: starting cron job");
+  cron.schedule("* * * * *", async () => {
     try {
       const data = await locations();
 
@@ -206,14 +209,12 @@ const startWeatherCronJob = () => {
             continue;
           }
 
-          console.log("Weather controller :: fetched data :: ", fetchedData);
           const existingData = await Weather.find({
             location,
             date: { $gte: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000) },
           }).sort({ date: -1 });
 
           const mergedData = mergeWeatherData(existingData, fetchedData);
-          console.log("Weather controller :: merged data :: ", mergedData);
 
           if (!mergedData || !Array.isArray(mergedData)) {
             console.error(`Invalid merged data for location: ${location}`);
@@ -233,19 +234,16 @@ const startWeatherCronJob = () => {
           const alerts = await processWeatherData(trends, cropTypes);
           const crops = await extractCropTypes(alerts);
           const transformedAlerts = transformAlerts(alerts, crops);
-          console.log(
-            "Weather controller :: transformedAlerts :: ",
-            transformedAlerts
-          );
-          const response = await storeWeatherDataInDB(
+
+          await storeWeatherDataInDB(
             mergedData,
             location,
             transformedAlerts
           );
-          return response;
+
+          redisPublisher.publish('weather_updates', JSON.stringify({ location, mergedData, alerts: transformedAlerts }));
         } catch (error) {
-          console.error(`Error processing location ${location}:`, error);
-          continue;
+          throw new ApiError(500, error?.message || "Error processing weather data");
         }
       }
     } catch (error) {
@@ -287,7 +285,7 @@ const mergeWeatherData = (existingData, fetchedData) => {
     const mergedArray = [...existingData, newDataPoint];
     return mergedArray.slice(-4); // Keep only the last 4 entries
   } catch (error) {
-    console.error("Error merging weather data:", error);
+    throw new ApiError(500, error?.message || "Error merging weather data");
     return [];
   }
 };
@@ -338,7 +336,6 @@ const storeWeatherDataInDB = async (mergedData, location, alerts) => {
         { upsert: true, new: true }
       );
 
-      console.log("Weather controller :: updated data :: ", updatedData);
 
       storedData.push(updatedData);
     }
@@ -348,21 +345,21 @@ const storeWeatherDataInDB = async (mergedData, location, alerts) => {
     }
     return storedData;
   } catch (error) {
-    console.log("Weather controller :: error :: ", error);
     throw new ApiError(500, error?.message || "Error storing weather data");
   }
 };
 
-const storeWeatherData = asyncHandler(async () => {
-  // Call the cron job when storeWeatherData is invoked
-  const response = startWeatherCronJob();
-  console.log("Weather controller :: response :: ", response);
+// const storeWeatherData = asyncHandler(async () => {
+//   // Call the cron job when storeWeatherData is invoked
+//   const response = startWeatherCronJob();
 
-  return new ApiResponse(
-    200,
-    response,
-    "Weather data and alerts stored or updated in DB successfully"
-  );
-});
+//   return new ApiResponse(
+//     200,
+//     response,
+//     "Weather data and alerts stored or updated in DB successfully"
+//   );
+// });
 
-export { storeWeatherData };
+// await storeWeatherData();
+
+export { startWeatherCronJob };
