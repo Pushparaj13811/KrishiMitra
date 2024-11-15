@@ -192,7 +192,6 @@ const logoutUser = asyncHandler(async (req, res) => {
 
 const getUserProfile = asyncHandler(async (req, res) => {
   const userId = req.user?._id;
-  console.log("userId", userId);
   const userProfile = await User.aggregate([
     { $match: { _id: userId } },
     {
@@ -496,7 +495,6 @@ const updateUserProfile = asyncHandler(async (req, res) => {
   }
 
   try {
-    console.log("updateFields", updateFields);
     let userProfile = await UserProfile.findOne({ userId });
 
     if (!userProfile) {
@@ -549,6 +547,8 @@ const updateUserBio = asyncHandler(async (req, res) => {
 const updateUserLanguage = asyncHandler(async (req, res) => {
   const { language } = req.body;
 
+  console.log("Backend :: usercontroller :: language : ",language);
+
   if (!language) {
     throw new ApiError(400, "Language is required");
   }
@@ -565,6 +565,7 @@ const updateUserLanguage = asyncHandler(async (req, res) => {
     }
   ).select("-password -refreshToken");
 
+  console.log("Backend :: usercontroller :: user : ",user);
   return res
     .status(200)
     .json(new ApiResponse(200, user, "Language updated successfully"));
