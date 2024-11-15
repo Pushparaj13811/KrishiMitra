@@ -36,6 +36,8 @@ import articleRouter from "./Routers/article.routes.js";
 import videoRouter from "./Routers/video.routes.js";
 import cropRouter from "./Routers/crop.routes.js";
 import weatherRouter from "./Routers/weather.routes.js";
+import { startWeatherCronJob } from "./Services/weather.service.js";
+
 
 app.options("/api/v1/users/login", cors());
 
@@ -44,6 +46,8 @@ app.use("/api/v1/articles", articleRouter);
 app.use("/api/v1/videos", videoRouter);
 app.use("/api/v1/crop", cropRouter);
 app.use("/api/v1/weather", weatherRouter);
+
+startWeatherCronJob();
 
 app.use(errorHandler);
 
