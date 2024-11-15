@@ -1,0 +1,11 @@
+node_modules
+npm-debug.log
+Dockerfile
+.dockerignore
+.git
+.gitignore
+readme.md
+.prettierrc
+.prettieriignore
+CODE_OF_CONDUCT.md
+contributing.md
