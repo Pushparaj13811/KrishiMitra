@@ -47,7 +47,7 @@ app.use("/api/v1/videos", videoRouter);
 app.use("/api/v1/crop", cropRouter);
 app.use("/api/v1/weather", weatherRouter);
 
-startWeatherCronJob();
+// startWeatherCronJob();
 
 app.use(errorHandler);
 
