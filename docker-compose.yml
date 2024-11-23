@@ -2,15 +2,29 @@ version: "3.8"
 
 services:
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: agrosmart-backend
+    image: agrosmart-backend:latest
     ports:
       - "3000:3000"
     depends_on:
       - redis
-    environment:
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
+    env_file: 
+      - .env
+    volumes:
+      - .:/usr/src/app # Bind source code for live development updates
+      - /usr/src/app/node_modules # Ensure node_modules remain in sync
+    command: >
+      sh -c "
+      if [ \"$APP_ENV\" = 'production' ]; then
+        npm run start;
+      else
+        npm run dev;
+      fi
+      "
+    restart: always
 
   redis:
     image: redis:latest
@@ -18,3 +32,13 @@ services:
     ports:
       - "6379:6379"
     restart: always
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 4
+
+volumes:
+  redis-data:

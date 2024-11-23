@@ -1,11 +1,12 @@
 {
-  "name": "agricultureinformationsystem",
+  "name": "agrosmart-backend",
   "version": "1.0.0",
   "description": "A comprehensive web application designed to empower farmers with modern agricultural insights. It features real-time crop information, including growth conditions, costs, and disease risks. Farmers can access articles and videos on modern farming techniques, upload images of diseased crops for AI-driven diagnosis and solutions, and leverage voice search in multiple languages. The platform also supports crop price tracking and sales directly through the system.",
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "nodemon -r dotenv/config --experimental-json-modules src/index.js"
+    "dev": "nodemon -r dotenv/config --experimental-json-modules src/index.js",
+    "start": "node src/index.js"
   },
   "keywords": [
     "Agriculture",
