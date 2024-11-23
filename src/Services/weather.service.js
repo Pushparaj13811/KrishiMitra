@@ -5,9 +5,12 @@ import { ApiError } from "../Utils/apiError.js";
 import { Weather } from "../Models/weather.model.js";
 import { UserProfile } from "../Models/userProfile.model.js";
 
+const redisHost = process.env.REDIS_HOST || "localhost";
+const redisPort = process.env.REDIS_PORT || 6379;
+
 const redisPublisher = new Redis({
-  host: "localhost",
-  port: 6379
+  host: redisHost,
+  port: redisPort,
 });
 const getCropTypes = async () => {
   try {

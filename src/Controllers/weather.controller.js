@@ -4,9 +4,12 @@ import { ApiError } from "../Utils/apiError.js";
 import { asyncHandler } from "../Utils/asyncHandler.js";
 import { Weather } from "../Models/weather.model.js";
 
+const redisHost = process.env.REDIS_HOST || 'localhost';
+const redisPort = process.env.REDIS_PORT || 6379;
+
 const redisSubscriber = new Redis({
-  host: 'localhost',
-  port: 6379
+  host: redisHost,
+  port: redisPort,
 });
 const connectedClients = [];
 
