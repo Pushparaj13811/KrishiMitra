@@ -41,8 +41,8 @@ const UserSchema = new Schema(
     },
     language: {
       type: String,
-      enum: ["english", "hindi"],
-      default: "english",
+      enum: ["en", "hi", "ne", "gu", "bho"],
+      default: "en",
       required: true,
     },
     avatar: {
