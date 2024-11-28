@@ -16,7 +16,15 @@ router.route("/get-all-videos").get(getAllVideos);
 router.route("/get-video/:videoId").get(getVideoById);
 router
   .route("/upload-video")
-  .post(verifyJwt, upload.single("video"), uploadVideo);
+  .post(
+    verifyJwt,
+    upload.fields([
+      { name: "video", maxCount: 1 },
+      { name: "thumbnail", maxCount: 1 }
+    ]),
+    uploadVideo
+  );
+
 router.route("/link-video-to-crop/:id").post(verifyJwt, uploadVideoToCropVideo);
 router
   .route("/unlink-video-from-crop/:id")

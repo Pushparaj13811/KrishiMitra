@@ -11,6 +11,10 @@ const VideoSchema = new Schema(
       type: String,
       required: true,
     },
+    thumbnail: {
+      type: String,
+      required: true,
+    },
     description: {
       type: String,
       required: true,
@@ -22,6 +26,7 @@ const VideoSchema = new Schema(
     language: {
       type: String,
       enum: ["english", "hindi"],
+      default: "english",
     },
     uploadedby: {
       type: Schema.Types.ObjectId,

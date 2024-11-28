@@ -24,7 +24,14 @@ const uploadVideo = asyncHandler(async (req, res) => {
 
   const { title, description, language } = req.body;
 
-  if ([title, description, language].includes(undefined || null || "")) {
+  console.log("Request received : ", req.body);
+
+  console.log("Title : ", title);
+  console.log("Description : ", description);
+
+
+
+  if ([title, description].includes(undefined || null || "")) {
     throw new ApiError(400, "Please provide all the required fields");
   }
   const uploadedby = req.user?._id;
@@ -32,18 +39,25 @@ const uploadVideo = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Unauthorized request");
   }
 
-  const localVideoPath = req.file?.path;
+  console.log("Video : ", req.file?.video);
+  console.log("Thumbnail : ", req.file?.thumbnail);
 
-  if (!localVideoPath) {
-    throw new ApiError(400, "Video file is missing");
+  const localVideoPath = req.file?.video[0]?.path;
+  const lovalThumbnailPath = req.file?.thumbnail[0]?.path;
+
+  console.log("Local Video Path : ",  req.file?.video[0]?.path);
+  console.log("Local Thumbnail Path : ",  req.file?.thumbnail[0]?.path);
+
+  if (!localVideoPath || !lovalThumbnailPath) {
+    throw new ApiError(400, "Please provide a video file and thumbnail");
   }
-
   const videoDuration = await getVideoDuration(localVideoPath);
 
   const videoPath = await uploadOnCloudinary(localVideoPath, "video");
+  const thumbnailPath = await uploadOnCloudinary(lovalThumbnailPath, "image");
 
-  if (!videoPath) {
-    throw new ApiError(500, "Failed to upload video");
+  if (!videoPath || !thumbnailPath) {
+    throw new ApiError(500, "Unable to upload video or thumbnail");
   }
 
   const video = await Video.create({
@@ -51,6 +65,7 @@ const uploadVideo = asyncHandler(async (req, res) => {
     description,
     language,
     url: videoPath,
+    thumbnail: thumbnailPath,
     duration: videoDuration,
     uploadedby,
   });
