@@ -70,6 +70,7 @@ const registerUser = asyncHandler(async (req, res) => {
   }
 
   const existedUser = await User.findOne({ $or: [{ username }, { email }] });
+
   if (existedUser) {
     fs.unlinkSync(avatarLocalPath);
     if (coverImageLocalPath) {
@@ -83,8 +84,10 @@ const registerUser = asyncHandler(async (req, res) => {
   }
 
   const avatarPublicId = await uploadOnCloudinary(avatarLocalPath);
+  
 
   const coverImagePublicId = await uploadOnCloudinary(coverImageLocalPath);
+  
 
   if (!avatarPublicId) {
     throw new ApiError(500, "Error while uploading avatar");
@@ -100,6 +103,14 @@ const registerUser = asyncHandler(async (req, res) => {
     role: role || "user",
     language,
     bio,
+  });
+
+  if (!user) {
+    throw new ApiError(500, "Error while creating user");
+  }
+
+  await UserProfile.create({
+    userId: user._id,
   });
 
   const createdUser = await User.findById(user._id).select(
@@ -453,6 +464,7 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, user, "Account details updated successfully"));
 });
+
 const updateUserProfile = asyncHandler(async (req, res) => {
   const userId = req.user?._id;
   const updateFields = {};
@@ -546,8 +558,6 @@ const updateUserBio = asyncHandler(async (req, res) => {
 
 const updateUserLanguage = asyncHandler(async (req, res) => {
   const { language } = req.body;
-
-  console.log("Backend :: usercontroller :: language : ",language);
 
   if (!language) {
     throw new ApiError(400, "Language is required");
