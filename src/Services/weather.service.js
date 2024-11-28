@@ -5,13 +5,20 @@ import { ApiError } from "../Utils/apiError.js";
 import { Weather } from "../Models/weather.model.js";
 import { UserProfile } from "../Models/userProfile.model.js";
 
-const redisHost = process.env.REDIS_HOST || "localhost";
-const redisPort = process.env.REDIS_PORT || 6379;
+const redisUrl = process.env.REDIS_URL;
+let redisPublisher;
 
-const redisPublisher = new Redis({
-  host: redisHost,
-  port: redisPort,
-});
+if (redisUrl) {
+  redisPublisher = new Redis(redisUrl);
+} else {
+  const redisHost = process.env.REDIS_HOST || "localhost";
+  const redisPort = process.env.REDIS_PORT || 6379;
+
+  redisPublisher = new Redis({
+    host: redisHost,
+    port: redisPort,
+  });
+}
 const getCropTypes = async () => {
   try {
     const cropTypes = await UserProfile.find({
@@ -88,6 +95,10 @@ const processWeatherData = async (trends, cropTypes) => {
   };
 
   cropTypes.forEach((crop) => {
+    if (!cropConditions[crop]) {
+      return; // Skip this crop
+    }
+
     const cropAlert = {};
     const conditions = cropConditions[crop];
 
@@ -225,12 +236,10 @@ const startWeatherCronJob = () => {
           }
 
           const trends = {
-            temperature: mergedData
-              .map((data) => data.temperature)
-              .filter(Boolean),
-            humidity: mergedData.map((data) => data.humidity).filter(Boolean),
-            windSpeed: mergedData.map((data) => data.windSpeed).filter(Boolean),
-            rainfall: mergedData.map((data) => data.rainfall).filter(Boolean),
+            temperature: fetchedData.main?.temp,
+            humidity: fetchedData.main?.humidity,
+            windSpeed: fetchedData.wind?.speed,
+            rainfall: fetchedData.rain?.["1h"] || 0,
           };
 
           const cropTypes = await getCropTypes();
