@@ -2,14 +2,21 @@ import mongoose, { Schema } from "mongoose";
 
 const CropImageSchema = new Schema(
   {
-    cropId: {
+    userId: {
       type: Schema.Types.ObjectId,
-      ref: "Crop",
+      ref: "User",
     },
     image: {
       type: String,
       required: true,
     },
+    prediction: {
+      type: Object,
+      required: true,
+    },
+    recommendations : {
+      type: Object,
+    }
   },
   {
     timestamps: true,
