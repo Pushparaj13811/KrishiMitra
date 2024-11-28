@@ -5,6 +5,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      platforms:
+        - linux/amd64
     container_name: agrosmart-backend
     image: agrosmart-backend:latest
     ports:
